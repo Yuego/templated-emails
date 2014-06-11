@@ -1,3 +1,6 @@
+#coding: utf-8
+from __future__ import unicode_literals, absolute_import
+
 import logging
 import os
 import threading
@@ -5,13 +8,16 @@ import threading
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.template import Context, TemplateDoesNotExist
-from django.contrib.sites.models import Site
 from django.template.loader import render_to_string
 from django.utils.translation import get_language, activate
 from django.db import models
 from django.core.exceptions import ImproperlyConfigured
-from django.contrib.auth import get_user_model
 
+try:
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+except ImportError:
+    from django.contrib.auth.models import User
 
 try:
     from celery.task import task
@@ -34,19 +40,19 @@ class LanguageStoreNotAvailable(Exception):
     pass
 
 
-def get_email_directories(dir):
-    directory_tree = False
-    for name in os.listdir(dir):
-        if os.path.isdir(os.path.join(dir, name)):
-            if directory_tree == False:
+def get_email_directories(directory):
+    directory_tree = None
+    for name in os.listdir(directory):
+        if os.path.isdir(os.path.join(directory, name)):
+            if directory_tree is None:
                 directory_tree = {}
-            directory_tree[name] = get_email_directories(os.path.join(dir, name))
+            directory_tree[name] = get_email_directories(os.path.join(directory, name))
     return directory_tree
 
 
 def send_templated_email(recipients, template_path, context=None,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    fail_silently=False, extra_headers=None):
+                         from_email=settings.DEFAULT_FROM_EMAIL,
+                         fail_silently=False, extra_headers=None):
     """
         recipients can be either a list of emails or a list of users,
         if it is users the system will change to the language that the
@@ -56,18 +62,17 @@ def send_templated_email(recipients, template_path, context=None,
     recipient_emails = [e for e in recipients if not isinstance(e, get_user_model())]
     send = _send_task.delay if use_celery else _send
     msg = send(recipient_pks, recipient_emails, template_path, context, from_email,
-         fail_silently, extra_headers=extra_headers)
+               fail_silently, extra_headers=extra_headers)
 
     return msg
 
 
 class SendThread(threading.Thread):
-    def __init__(self, recipient, current_language, current_site, default_context,
+    def __init__(self, recipient, current_language, default_context,
                  subject_path, text_path, html_path, from_email=settings.DEFAULT_FROM_EMAIL,
                  fail_silently=False):
         self.recipient = recipient
         self.current_language = current_language
-        self.current_site = current_site
         self.default_context = default_context
         self.subject_path = subject_path
         self.text_path = text_path
@@ -109,7 +114,7 @@ class SendThread(threading.Thread):
                 body = pynliner.fromString(body)
             msg.attach_alternative(body, "text/html")
         except TemplateDoesNotExist:
-            logging.info("Email sent without HTML, since %s not found" % html_path)
+            logging.info("Email sent without HTML, since %s not found" % self.html_path)
 
         msg.send(fail_silently=self.fail_silently)
 
@@ -124,10 +129,8 @@ def _send(recipient_pks, recipient_emails, template_path, context, from_email,
     recipients += recipient_emails
 
     current_language = get_language()
-    current_site = Site.objects.get(id=settings.SITE_ID)
 
     default_context = context or {}
-    default_context["current_site"] = current_site
     default_context["STATIC_URL"] = settings.STATIC_URL
 
     subject_path = "%s/short.txt" % template_path
@@ -136,7 +139,7 @@ def _send(recipient_pks, recipient_emails, template_path, context, from_email,
 
     for recipient in recipients:
         if use_threading:
-            SendThread(recipient, current_language, current_site, default_context, subject_path,
+            SendThread(recipient, current_language, default_context, subject_path,
                        text_path, html_path, from_email, fail_silently).start()
             return
         # if it is user, get the email and switch the language

@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*-
-from django.utils import unittest
+#coding: utf-8
+from __future__ import unicode_literals, absolute_import
+
 from django.test import TestCase
-from .parse_util import parse_string_blocks, replace_blocks, replace_string_blocks
+from templated_emails.parse_util import parse_string_blocks, replace_blocks, replace_string_blocks
 
 
 test_extraction_string =  """{% block test %}tr
@@ -33,12 +34,12 @@ class BlockExtraction(TestCase):
         data = parse_string_blocks(test_extraction_string3, {})
         self.assertEquals("""
             tr s123t sdf
-""",data["test123"])
-        self.assertEquals("""test""",data["test"])
+""", data["test123"])
+        self.assertEquals("""test""", data["test"])
 
     def test_full_extraction(self):
         data = parse_string_blocks(test_extraction_string4, {})
-        print data
+        print (data)
         self.assertTrue(data.get("message_title", False))
         self.assertTrue(data.get("email_notification", False))
         self.assertTrue(data.get("email_title", False))

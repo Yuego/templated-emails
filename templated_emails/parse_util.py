@@ -1,6 +1,10 @@
+#coding: utf-8
+from __future__ import unicode_literals, absolute_import
+
 from django.template.loader_tags import ExtendsNode
 from django.conf import settings
 import re
+
 
 def recursive_block_replace(template, data=None, replace_static_url=True, replace_trans=True,
                             replace_with=True, replace_if=True):
@@ -80,11 +84,11 @@ def parse_string_blocks(string, data):
                        re.DOTALL|re.MULTILINE|re.IGNORECASE)
     m = regex.findall(string)
     for item in m:
-        print item[0]
+        print (item[0])
         data[item[0]] = item[1]
     return data
 
 
 def read_file(path):
-    file = open(path, "r")
-    return file.read()
+    f = open(path, "r")
+    return f.read()

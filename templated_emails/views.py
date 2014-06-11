@@ -1,17 +1,19 @@
+#coding: utf-8
+from __future__ import unicode_literals, absolute_import
+
 import logging
 
-from django.contrib.auth.models import User
-from django.http import HttpResponseRedirect, Http404, HttpResponse
-from django.shortcuts import render_to_response, get_object_or_404
+from django.http import Http404
+from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.conf import settings
 from django.template.loader import get_template
-from django.template.base import Template
 
-from .utils import get_email_directories
-from .parse_util import recursive_block_replace
+from templated_emails.utils import get_email_directories
+from templated_emails.parse_util import recursive_block_replace
 
 logger = logging.getLogger('templated_emails')
+
 
 def index(request, template_name="templated_emails/index.html"):
     if not request.user.is_superuser:
